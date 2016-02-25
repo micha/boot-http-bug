@@ -1,5 +1,5 @@
 (set-env!
- :source-paths    #{"src"}
+ :source-paths    #{"src" "task-src"}
  :resource-paths  #{"html"})
 
 (require

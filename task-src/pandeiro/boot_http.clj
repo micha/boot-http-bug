@@ -1,9 +1,10 @@
 (ns pandeiro.boot-http
   {:boot/export-tasks true}
   (:require
+   [clojure.java.io    :as io]
    [boot.pod           :as pod]
    [boot.util          :as util]
-   [boot.core          :as core :refer [deftask]]
+   [boot.core          :as core :refer [deftask tmp-dir!]]
    [boot.task.built-in :as task]))
 
 (def default-port 3000)
@@ -42,11 +43,13 @@
 
   (let [port        (or port default-port)
         server-dep  (if httpkit httpkit-dep jetty-dep)
+        docroot     (tmp-dir!)
         deps        (cond-> serve-deps
                       true        (conj server-dep)
                       (seq nrepl) (conj nrepl-dep))
-        worker      (pod/make-pod (update-in (core/get-env) [:dependencies]
-                                             into deps))
+        worker      (pod/make-pod (-> (core/get-env)
+                                      (update-in [:dependencies] into deps)
+                                      (assoc :directories #{"task-src" (.getPath docroot)})))
         start       (delay
                      (pod/with-eval-in worker
                        (require '[pandeiro.boot-http.impl :as http]
@@ -82,5 +85,8 @@
        (when '~cleanup
          (u/resolve-and-invoke '~cleanup))))
     (core/with-pre-wrap fileset
+      (doseq [[path infile] (->> fileset core/output-files
+                                 (map (juxt core/tmp-path core/tmp-file)))]
+        (io/copy infile (io/file docroot path)))
       @start
       (assoc fileset :http-port (pod/with-eval-in worker (:local-port server))))))
