@@ -87,6 +87,7 @@
     (core/with-pre-wrap fileset
       (doseq [[path infile] (->> fileset core/output-files
                                  (map (juxt core/tmp-path core/tmp-file)))]
+        (core/empty-dir! docroot)
         (io/copy infile (io/file docroot path)))
       @start
       (assoc fileset :http-port (pod/with-eval-in worker (:local-port server))))))
